@@ -4,6 +4,7 @@ import React from "react"
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Lock, Mail, Eye, EyeOff, X, Shield } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/context/auth-context';
@@ -32,8 +33,9 @@ export default function LoginModal({
   const [tempToken, setTempToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const { login, verifyMfa } = useAuth();
+  const { login, verifyMfa, user } = useAuth();
   const { toast } = useToast();
+  const router = useRouter();
 
   if (!isOpen) return null;
 
@@ -69,6 +71,16 @@ export default function LoginModal({
           description: 'You have been successfully logged in.',
         });
         handleClose();
+
+        // 🚦 TRAFFIC CONTROLLER (REDIRECTS)
+        // Use the role prop from the modal, not user.role (which may not be updated yet)
+        if (role === 'doctor') {
+          router.push('/doctor');
+        } else if (role === 'patient') {
+          router.push('/portal');
+        } else if (role === 'admin') {
+          window.location.href = 'http://localhost:8000/admin';
+        }
       }
     } catch (error) {
       toast({
@@ -94,6 +106,16 @@ export default function LoginModal({
           description: 'You have been successfully logged in.',
         });
         handleClose();
+
+        // 🚦 TRAFFIC CONTROLLER (REDIRECTS) - After MFA
+        // Use the role prop from the modal, not user.role
+        if (role === 'doctor') {
+          router.push('/doctor');
+        } else if (role === 'patient') {
+          router.push('/portal');
+        } else if (role === 'admin') {
+          window.location.href = 'http://localhost:8000/admin';
+        }
       }
     } catch (error) {
       toast({
@@ -165,8 +187,8 @@ export default function LoginModal({
                     onClick={() => onChangeRole(r)}
                     disabled={isLoading}
                     className={`flex-1 py-2 px-3 rounded-lg font-medium text-sm transition-colors ${role === r
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted text-muted-foreground hover:bg-border'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted text-muted-foreground hover:bg-border'
                       }`}
                   >
                     {roleLabels[r]}

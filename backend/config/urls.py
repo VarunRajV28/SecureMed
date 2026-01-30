@@ -16,9 +16,15 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path, include
+from authentication import views as auth_views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/auth/', include('authentication.urls')),
     path('api/', include('consents.urls')),
+    
+    # RBAC Test Endpoints
+    path('api/doctor/test-dashboard/', auth_views.doctor_dashboard_test, name='doctor_test'),
+    path('api/patient/test-dashboard/', auth_views.patient_dashboard_test, name='patient_test'),
+    path('api/admin/test-dashboard/', auth_views.admin_dashboard_test, name='admin_test'),
 ]

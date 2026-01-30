@@ -325,3 +325,56 @@ def mfa_login_view(request):
     return Response({
         'error': 'Invalid OTP code'
     }, status=status.HTTP_401_UNAUTHORIZED)
+
+
+# ============================================
+# RBAC Test Endpoints
+# ============================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def doctor_dashboard_test(request):
+    """
+    Test endpoint for doctor role.
+    GET /api/doctor/test-dashboard/
+    
+    Should only be accessible by users with 'provider' role.
+    """
+    return Response({
+        'message': 'Welcome Doctor',
+        'user': request.user.username,
+        'role': request.user.role
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def patient_dashboard_test(request):
+    """
+    Test endpoint for patient role.
+    GET /api/patient/test-dashboard/
+    
+    Should only be accessible by users with 'patient' role.
+    """
+    return Response({
+        'message': 'Welcome Patient',
+        'user': request.user.username,
+        'role': request.user.role
+    }, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_dashboard_test(request):
+    """
+    Test endpoint for admin role.
+    GET /api/admin/test-dashboard/
+    
+    Should only be accessible by users with 'admin' role.
+    """
+    return Response({
+        'message': 'Welcome Admin',
+        'user': request.user.username,
+        'role': request.user.role
+    }, status=status.HTTP_200_OK)
+
