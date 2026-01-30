@@ -15,9 +15,11 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
+  Settings,
 } from 'lucide-react';
+import MfaSetup from '@/components/auth/mfa-setup';
 
-type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records';
+type DoctorTab = 'dashboard' | 'appointments' | 'patients' | 'records' | 'settings';
 
 interface DoctorPortalProps {
   onLogout: () => void;
@@ -64,6 +66,7 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
     { id: 'appointments', label: 'Appointments', icon: <Calendar className="h-5 w-5" /> },
     { id: 'patients', label: 'My Patients', icon: <Users className="h-5 w-5" /> },
     { id: 'records', label: 'Medical Records', icon: <FileText className="h-5 w-5" /> },
+    { id: 'settings', label: 'Settings', icon: <Settings className="h-5 w-5" /> },
   ];
 
   return (
@@ -264,6 +267,16 @@ export default function DoctorPortal({ onLogout, onSwitchRole }: DoctorPortalPro
               <div className="bg-card p-6 rounded-lg border border-border">
                 <h3 className="text-xl font-bold text-foreground mb-6">Medical Records</h3>
                 <p className="text-muted-foreground">View and manage patient medical records here.</p>
+              </div>
+            )}
+
+            {activeTab === 'settings' && (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-2xl font-bold text-foreground mb-2">Security Settings</h3>
+                  <p className="text-muted-foreground">Manage your account security and two-factor authentication</p>
+                </div>
+                <MfaSetup />
               </div>
             )}
           </div>
