@@ -9,6 +9,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     """
     Serializer for user registration.
     Validates password strength (min 12 chars, 1 special char).
+    Requires valid invitation token and CAPTCHA verification.
     """
     password = serializers.CharField(
         write_only=True,
@@ -19,10 +20,20 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         write_only=True,
         style={'input_type': 'password'}
     )
+    token = serializers.UUIDField(
+        write_only=True,
+        required=True,
+        help_text='Invitation token'
+    )
+    captcha_token = serializers.BooleanField(
+        write_only=True,
+        required=True,
+        help_text='CAPTCHA verification (placeholder)'
+    )
     
     class Meta:
         model = User
-        fields = ['username', 'email', 'password', 'password_confirm', 'role']
+        fields = ['username', 'email', 'password', 'password_confirm', 'role', 'token', 'captcha_token']
         extra_kwargs = {
             'email': {'required': True},
             'role': {'required': False}
@@ -48,6 +59,17 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         
         return value
     
+    def validate_captcha_token(self, value):
+        """
+        Validate CAPTCHA token (placeholder implementation).
+        In production, this would verify with a CAPTCHA service like reCAPTCHA.
+        """
+        if not value:
+            raise serializers.ValidationError(
+                "CAPTCHA verification is required."
+            )
+        return value
+    
     def validate(self, data):
         """
         Validate that passwords match.
@@ -61,8 +83,12 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         """
         Create user with hashed password.
+        Note: token and captcha_token are removed before user creation.
         """
         validated_data.pop('password_confirm')
+        validated_data.pop('token')  # Token handled in view
+        validated_data.pop('captcha_token')  # CAPTCHA already validated
+        
         user = User.objects.create_user(
             username=validated_data['username'],
             email=validated_data['email'],

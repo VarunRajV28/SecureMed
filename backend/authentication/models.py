@@ -1,6 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.utils import timezone
+from datetime import timedelta
+import uuid
 
 
 class User(AbstractUser):
@@ -80,3 +82,92 @@ class User(AbstractUser):
         self.locked_until = None
         self.failed_login_attempts = 0
         self.save(update_fields=['locked_until', 'failed_login_attempts'])
+
+
+class Invitation(models.Model):
+    """
+    Invitation model for invite-only registration system.
+    Stores invitation tokens with expiration and usage tracking.
+    """
+    
+    email = models.EmailField(
+        help_text='Email address of the invitee'
+    )
+    token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        help_text='Unique invitation token'
+    )
+    sent_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='sent_invitations',
+        help_text='Admin user who sent this invitation'
+    )
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        help_text='When the invitation was created'
+    )
+    expires_at = models.DateTimeField(
+        help_text='When the invitation expires'
+    )
+    is_used = models.BooleanField(
+        default=False,
+        help_text='Whether this invitation has been used'
+    )
+    used_at = models.DateTimeField(
+        blank=True,
+        null=True,
+        help_text='When the invitation was used'
+    )
+    used_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name='used_invitation',
+        help_text='User who registered with this invitation'
+    )
+    
+    class Meta:
+        db_table = 'invitations'
+        verbose_name = 'Invitation'
+        verbose_name_plural = 'Invitations'
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"Invitation for {self.email} (Token: {str(self.token)[:8]}...)"
+    
+    def save(self, *args, **kwargs):
+        """
+        Override save to set expiration time if not already set.
+        """
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(hours=48)
+        super().save(*args, **kwargs)
+    
+    def is_valid(self):
+        """
+        Check if the invitation is valid (not used and not expired).
+        
+        Returns:
+            bool: True if invitation is valid, False otherwise
+        """
+        if self.is_used:
+            return False
+        if timezone.now() > self.expires_at:
+            return False
+        return True
+    
+    def mark_as_used(self, user):
+        """
+        Mark the invitation as used by a specific user.
+        
+        Args:
+            user: The User instance who used this invitation
+        """
+        self.is_used = True
+        self.used_at = timezone.now()
+        self.used_by = user
+        self.save(update_fields=['is_used', 'used_at', 'used_by'])
