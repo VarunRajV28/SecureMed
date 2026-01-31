@@ -22,4 +22,8 @@ urlpatterns = [
     
     # RBAC Testing
     path('admin-test/', views.admin_test_view, name='admin_test'),
+    
+    # Invitation System
+    path('invite/send/', views.SendInviteView.as_view(), name='send_invite'),
+    path('invite/verify/', views.verify_invite_view, name='verify_invite'),
 ]
