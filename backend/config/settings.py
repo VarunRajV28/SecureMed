@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -183,8 +184,23 @@ SIMPLE_JWT = {
 }
 
 # Security & Cookies
+# Determine if we're in a secure (HTTPS) environment
+# Set DJANGO_SECURE_SSL=True in production environment variables
+SECURE_SSL = os.environ.get('DJANGO_SECURE_SSL', 'False') == 'True'
+
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = False
-# Set to False for localhost development (True for Production)
-SESSION_COOKIE_SECURE = False
-CSRF_COOKIE_SECURE = False
+
+# HTTPS-only cookies (enabled in production via DJANGO_SECURE_SSL env var)
+# For localhost development: DJANGO_SECURE_SSL should not be set (defaults to False)
+# For production deployment: set DJANGO_SECURE_SSL=True in environment
+SESSION_COOKIE_SECURE = SECURE_SSL
+CSRF_COOKIE_SECURE = SECURE_SSL
+
+# Google reCAPTCHA Configuration
+# For local development, uses Google's test keys (always pass)
+# In production, set RECAPTCHA_SECRET_KEY environment variable
+RECAPTCHA_SECRET_KEY = os.environ.get(
+    'RECAPTCHA_SECRET_KEY',
+    '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe'  # Google's test secret key
+)

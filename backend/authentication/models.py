@@ -40,6 +40,12 @@ class User(AbstractUser):
         null=True,
         help_text='TOTP secret key for MFA'
     )
+    mfa_recovery_codes = models.JSONField(
+        default=list,
+        blank=True,
+        null=True,
+        help_text='Hashed recovery codes for MFA (one-time use)'
+    )
     
     # Account lockout fields
     failed_login_attempts = models.IntegerField(

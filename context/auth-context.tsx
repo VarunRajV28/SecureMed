@@ -21,9 +21,10 @@ interface AuthContextType {
     tokens: Tokens | null;
     isAuthenticated: boolean;
     login: (username: string, password: string) => Promise<LoginResult>;
-    verifyMfa: (tempToken: string, otp: string) => Promise<boolean>;
+    verifyMfa: (tempToken: string, code: string, isRecoveryCode?: boolean) => Promise<boolean>;
     logout: () => Promise<void>;
     refreshToken: () => Promise<boolean>;
+    refreshUserStatus: () => Promise<boolean>;
 }
 
 interface LoginResult {
@@ -106,14 +107,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
-    const verifyMfa = async (tempToken: string, otp: string): Promise<boolean> => {
+    const verifyMfa = async (tempToken: string, code: string, isRecoveryCode: boolean = false): Promise<boolean> => {
         try {
+            // Build request body based on whether it's a recovery code or OTP
+            const requestBody = isRecoveryCode
+                ? { temp_token: tempToken, recovery_code: code }
+                : { temp_token: tempToken, otp: code };
+
             const response = await fetch('http://localhost:8000/api/auth/mfa/login/', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ temp_token: tempToken, otp }),
+                body: JSON.stringify(requestBody),
             });
 
             const data = await response.json();
@@ -121,7 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             if (!response.ok) {
                 toast({
                     title: 'MFA Verification Failed',
-                    description: data.error || 'Invalid OTP code',
+                    description: data.error || (isRecoveryCode ? 'Invalid recovery code' : 'Invalid OTP code'),
                     variant: 'destructive',
                 });
                 return false;
@@ -187,22 +193,84 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
     };
 
+    const refreshUserStatus = async (): Promise<boolean> => {
+        try {
+            if (!tokens?.access) {
+                console.error('No access token available');
+                return false;
+            }
+
+            const response = await fetch('http://localhost:8000/api/auth/user/', {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${tokens.access}`,
+                    'Content-Type': 'application/json',
+                },
+            });
+
+            if (!response.ok) {
+                console.error('Failed to fetch user profile');
+                return false;
+            }
+
+            const userData = await response.json();
+
+            // Update user state and localStorage
+            setUser(userData);
+            localStorage.setItem('auth_user', JSON.stringify(userData));
+
+            return true;
+        } catch (error) {
+            console.error('Error refreshing user status:', error);
+            return false;
+        }
+    };
+
     const logout = async () => {
         // Call backend logout API to blacklist the refresh token
         try {
-            if (tokens?.access && tokens?.refresh) {
-                await fetch('http://localhost:8000/api/auth/logout/', {
+            // Try to get refresh token from state first, then fallback to localStorage
+            let refreshToken = tokens?.refresh;
+
+            if (!refreshToken) {
+                // Fallback: try to get from localStorage
+                const storedTokens = localStorage.getItem('auth_tokens');
+                if (storedTokens) {
+                    try {
+                        const parsedTokens = JSON.parse(storedTokens);
+                        refreshToken = parsedTokens.refresh;
+                    } catch (e) {
+                        console.error('Failed to parse stored tokens:', e);
+                    }
+                }
+            }
+
+            // Only call backend if we have both access and refresh tokens
+            if (tokens?.access && refreshToken) {
+                console.log('[LOGOUT] Sending logout request to backend');
+                console.log('[LOGOUT] Refresh token:', refreshToken.substring(0, 30) + '...');
+
+                const response = await fetch('http://localhost:8000/api/auth/logout/', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${tokens.access}`,
                     },
-                    body: JSON.stringify({ refresh: tokens.refresh }),
+                    body: JSON.stringify({ refresh: refreshToken }),
                 });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    console.error('[LOGOUT] Backend logout failed:', response.status, errorData);
+                } else {
+                    console.log('[LOGOUT] Backend logout successful');
+                }
+            } else {
+                console.log('[LOGOUT] Skipping backend call - no tokens available');
             }
         } catch (error) {
             // Log error but continue with logout - we always want to clear local state
-            console.error('Backend logout error:', error);
+            console.error('[LOGOUT] Backend logout error:', error);
         }
 
         // Always clear local state regardless of backend call result
@@ -225,6 +293,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         verifyMfa,
         logout,
         refreshToken,
+        refreshUserStatus,
     };
 
     return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

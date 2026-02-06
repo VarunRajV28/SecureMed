@@ -30,6 +30,8 @@ export default function LoginModal({
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [otpCode, setOtpCode] = useState('');
+  const [recoveryCode, setRecoveryCode] = useState('');
+  const [useRecoveryCode, setUseRecoveryCode] = useState(false);
   const [tempToken, setTempToken] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
@@ -98,7 +100,9 @@ export default function LoginModal({
     setIsLoading(true);
 
     try {
-      const success = await verifyMfa(tempToken, otpCode);
+      // Use recovery code if toggled, otherwise use OTP
+      const code = useRecoveryCode ? recoveryCode : otpCode;
+      const success = await verifyMfa(tempToken, code, useRecoveryCode);
 
       if (success) {
         toast({
@@ -134,6 +138,8 @@ export default function LoginModal({
     setUsername('');
     setPassword('');
     setOtpCode('');
+    setRecoveryCode('');
+    setUseRecoveryCode(false);
     setTempToken('');
     setShowPassword(false);
     setIsLoading(false);
@@ -286,26 +292,59 @@ export default function LoginModal({
                 <Shield className="h-8 w-8 text-primary" />
               </div>
               <p className="text-sm text-muted-foreground">
-                Enter the 6-digit code from your authenticator app
+                {useRecoveryCode
+                  ? 'Enter one of your 8-character recovery codes'
+                  : 'Enter the 6-digit code from your authenticator app'
+                }
               </p>
             </div>
 
-            {/* OTP Input */}
+            {/* OTP or Recovery Code Input */}
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Authentication Code
+                {useRecoveryCode ? 'Recovery Code' : 'Authentication Code'}
               </label>
-              <input
-                type="text"
-                value={otpCode}
-                onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                placeholder="000000"
-                className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground text-center text-2xl tracking-widest placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
-                required
-                maxLength={6}
+              {useRecoveryCode ? (
+                <input
+                  type="text"
+                  value={recoveryCode}
+                  onChange={(e) => setRecoveryCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8))}
+                  placeholder="ABC12345"
+                  className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground text-center text-xl tracking-widest placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                  required
+                  maxLength={8}
+                  disabled={isLoading}
+                  autoFocus
+                />
+              ) : (
+                <input
+                  type="text"
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  className="w-full px-4 py-3 bg-input border border-border rounded-lg text-foreground text-center text-2xl tracking-widest placeholder-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring font-mono"
+                  required
+                  maxLength={6}
+                  disabled={isLoading}
+                  autoFocus
+                />
+              )}
+            </div>
+
+            {/* Toggle Recovery Code Link */}
+            <div className="text-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setUseRecoveryCode(!useRecoveryCode);
+                  setOtpCode('');
+                  setRecoveryCode('');
+                }}
+                className="text-sm text-primary hover:underline"
                 disabled={isLoading}
-                autoFocus
-              />
+              >
+                {useRecoveryCode ? 'Use authenticator code instead' : 'Use recovery code instead'}
+              </button>
             </div>
 
             {/* Verify Button */}
@@ -313,7 +352,7 @@ export default function LoginModal({
               type="submit"
               className="w-full"
               size="lg"
-              disabled={isLoading || otpCode.length !== 6}
+              disabled={isLoading || (useRecoveryCode ? recoveryCode.length !== 8 : otpCode.length !== 6)}
             >
               {isLoading ? 'Verifying...' : 'Verify Code'}
             </Button>
@@ -326,6 +365,8 @@ export default function LoginModal({
               onClick={() => {
                 setStep('STEP_CREDENTIALS');
                 setOtpCode('');
+                setRecoveryCode('');
+                setUseRecoveryCode(false);
                 setTempToken('');
               }}
               disabled={isLoading}
