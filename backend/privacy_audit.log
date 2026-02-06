@@ -1,0 +1,4 @@
+2026-02-07 00:53:55,928 INFO ACCESS: User ID 19 accessed /api/consents/ via GET
+2026-02-07 00:53:55,960 INFO ACCESS: User ID 19 accessed /api/consents/ via GET
+2026-02-07 00:54:11,928 INFO ACCESS: User ID 19 accessed /api/consents/4/ via PATCH
+2026-02-07 00:54:12,804 INFO ACCESS: User ID 19 accessed /api/consents/4/ via PATCH

@@ -56,6 +56,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'authentication.middleware.RoleMiddleware',  # Role-based access control
+    'authentication.middleware_logging.PrivacyLoggingMiddleware',  # Privacy-aware access logging
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -204,3 +205,31 @@ RECAPTCHA_SECRET_KEY = os.environ.get(
     'RECAPTCHA_SECRET_KEY',
     '6LeIxAcTAAAAAGG-vFI1TnRWxMZNFuojJ4WifJWe'  # Google's test secret key
 )
+
+# Privacy Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{asctime} {levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'privacy_file': {
+            'level': 'INFO',
+            'class': 'logging.FileHandler',
+            'filename': 'privacy_audit.log',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'authentication.middleware_logging': {
+            'handlers': ['privacy_file'],
+            'level': 'INFO',
+            'propagate': True,
+        },
+    },
+}
+
