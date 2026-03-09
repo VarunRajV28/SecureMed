@@ -22,9 +22,8 @@ ENV NODE_ENV=production \
     PORT=8080 \
     HOSTNAME=0.0.0.0
 
-# Alpine-compatible user and group creation
-RUN addgroup -S -g 1001 nodejs && \
-    adduser -S -u 1001 -G nodejs nextjs
+# Simplified user creation that is more compatible with different base images
+RUN id -u nextjs >/dev/null 2>&1 || (addgroup -g 1001 -S nodejs && adduser -u 1001 -S nextjs -G nodejs)
 
 # Copy the standalone build files
 COPY --from=builder /app/public               ./public
