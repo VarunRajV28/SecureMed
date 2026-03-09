@@ -2,7 +2,7 @@ FROM oven/bun:1 AS deps
 
 WORKDIR /app
 COPY package.json bun.lock ./
-RUN bun install
+RUN bun install --frozen-lockfile
 
 # ── production build ──────────────────────────────────────────────────────────
 FROM deps AS builder
@@ -10,6 +10,7 @@ FROM deps AS builder
 COPY . .
 ARG BACKEND_URL
 ENV BACKEND_URL=$BACKEND_URL
+# This pre-compiles the site so it loads instantly later
 RUN bun run build
 
 # ── production runtime ────────────────────────────────────────────────────────
@@ -17,25 +18,19 @@ FROM oven/bun:1 AS runner
 
 WORKDIR /app
 
-ENV NODE_ENV=production
+ENV NODE_ENV=production \
+    PORT=8080 \
+    HOSTNAME=0.0.0.0
 
 RUN addgroup --system --gid 1001 nodejs && \
     adduser  --system --uid 1001 nextjs
 
-COPY --from=builder /app/public        ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static     ./.next/static
+# Copy the standalone build files
+COPY --from=builder /app/public               ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone      ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static          ./.next/static
 
 USER nextjs
-EXPOSE 3000
-CMD ["bun", "run", "server.js"]
-
-# ── dev (default) ─────────────────────────────────────────────────────────────
-FROM deps AS dev
-
-WORKDIR /app
-COPY . .
-ARG BACKEND_URL
-ENV BACKEND_URL=$BACKEND_URL
-EXPOSE 3000
-CMD ["bun", "run", "dev"]
+EXPOSE 8080
+# Use node to run the standalone server for best performance
+CMD ["node", "server.js"]
