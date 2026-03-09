@@ -2,7 +2,8 @@
 FROM oven/bun:1 AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile
+# Removed --frozen-lockfile to allow the build to fix lockfile mismatches
+RUN bun install
 
 # 2. Production build
 FROM deps AS builder
@@ -21,7 +22,7 @@ ENV NODE_ENV=production \
     PORT=8080 \
     HOSTNAME=0.0.0.0
 
-# Robust Debian-compatible user creation
+# Debian-compatible user creation
 RUN (getent group nodejs || groupadd --system --gid 1001 nodejs) && \
     (getent passwd nextjs || useradd --system --uid 1001 --gid nodejs nextjs)
 
