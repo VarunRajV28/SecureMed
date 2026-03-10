@@ -57,3 +57,7 @@ celerybeat.pid
 # Misc
 *.log
 *.pid
+
+
+*.ctl
+gunicorn.ctl
