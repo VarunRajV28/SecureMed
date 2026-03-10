@@ -146,8 +146,16 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.environ.get('STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'))
+
+# This is the "magic" that makes the horrible layout look pretty in production
+STORAGES = {
+    "staticfiles": {
+        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+    },
+}
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
@@ -227,6 +235,12 @@ SIMPLE_JWT = {
 # Determine if we're in a secure (HTTPS) environment
 # Set DJANGO_SECURE_SSL=True in production environment variables
 SECURE_SSL = os.environ.get('DJANGO_SECURE_SSL', 'False') == 'True'
+
+# Add this here to fix the 403 Forbidden error
+CSRF_TRUSTED_ORIGINS = config(
+    'CSRF_TRUSTED_ORIGINS', 
+    default='https://securemed-production.up.railway.app,https://*.railway.app'
+).split(',')
 
 # MFA Feature Flag (disabled by default)
 MFA_ENABLED = os.environ.get('MFA_ENABLED', 'True') == 'True'
