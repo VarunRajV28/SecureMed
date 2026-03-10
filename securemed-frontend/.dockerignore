@@ -1,17 +1,20 @@
-# Version control
-.git/
+# Version control - The biggest cause of snapshot timeouts
+.git
+**/.git
 .gitignore
 
-# Dependencies (rebuilt in container)
-node_modules/
+# Dependencies - Ensure ALL nested versions are ignored
+node_modules
+**/node_modules
 
-# Next.js build output (rebuilt in container)
-.next/
-out/
+# Next.js build output
+.next
+**/out
+**/build
 
 # IDE / Editor
-.vscode/
-.idea/
+.vscode
+.idea
 *.swp
 *.swo
 *~
@@ -25,8 +28,11 @@ Dockerfile
 docker-compose.yml
 .dockerignore
 
-# Misc
+# Misc / Logs
 *.log
 *.pid
-coverage/
-.nyc_output/
+coverage
+.nyc_output
+.env
+.env.local
+.env.production
