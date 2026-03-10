@@ -13,7 +13,23 @@ ARG BACKEND_URL
 ENV BACKEND_URL=$BACKEND_URL
 RUN bun run build
 
-# 3. Production runtime
+# ── dev (Moved here so it's not the default) ──────────────────────────────────
+FROM oven/bun:1 AS dev
+WORKDIR /app
+
+ENV NODE_ENV=development \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+
+COPY package.json bun.lock ./
+RUN bun install
+
+COPY . .
+
+EXPOSE 3000
+CMD ["bun", "run", "dev"]
+
+# 3. Production runtime (Now the final, default stage) ─────────────────────────
 FROM oven/bun:1 AS runner
 WORKDIR /app
 
@@ -35,20 +51,5 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static          ./.next/sta
 
 USER nextjs
 EXPOSE 8080
+# This is the final CMD that Railway will execute by default
 CMD ["node", "server.js"]
-
-# ── dev (New stage from main repo) ────────────────────────────────────────────
-FROM oven/bun:1 AS dev
-WORKDIR /app
-
-ENV NODE_ENV=development \
-    PORT=3000 \
-    HOSTNAME=0.0.0.0
-
-COPY package.json bun.lock ./
-RUN bun install
-
-COPY . .
-
-EXPOSE 3000
-CMD ["bun", "run", "dev"]
