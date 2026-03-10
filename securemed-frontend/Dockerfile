@@ -2,7 +2,7 @@
 FROM oven/bun:1 AS deps
 WORKDIR /app
 COPY package.json bun.lock ./
-# Relaxed install to prevent lockfile mismatch errors in the cloud
+# Relaxed install to prevent lockfile mismatch errors
 RUN bun install
 
 # 2. Production build
@@ -17,20 +17,19 @@ RUN bun run build
 FROM oven/bun:1 AS runner
 WORKDIR /app
 
-# Set production environment explicitly
+# Explicitly set production
 ENV NODE_ENV=production \
     PORT=8080 \
     HOSTNAME=0.0.0.0
 
-# Install shadow utility and set up the nextjs user for security
+# Install shadow utility for user management
 RUN apt-get update \
     && apt-get install -y --no-install-recommends shadow \
     && rm -rf /var/lib/apt/lists/* \
     && groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid 1001 nextjs
 
-# Copy the 'standalone' build files from the builder stage
-# This is much smaller and faster than copying the whole app
+# Copy standalone build files
 COPY --from=builder --chown=nextjs:nodejs /app/public               ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone      ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static          ./.next/static
@@ -38,5 +37,5 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static          ./.next/sta
 USER nextjs
 EXPOSE 8080
 
-# The only CMD in the file. Railway will use this for the production server.
+# Production start command
 CMD ["node", "server.js"]
