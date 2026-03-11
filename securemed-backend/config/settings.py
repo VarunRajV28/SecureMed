@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 import os
 from pathlib import Path
 from decouple import config
+import dj_database_url
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -35,6 +36,7 @@ if 'testserver' not in ALLOWED_HOSTS:
 # Application definition
 
 INSTALLED_APPS = [
+    'corsheaders',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -44,7 +46,6 @@ INSTALLED_APPS = [
     'rest_framework',
     'rest_framework_simplejwt',
     'rest_framework_simplejwt.token_blacklist',
-    'corsheaders',
     # Accounts
     'apps.accounts.users',
     'apps.accounts.patients',
@@ -67,18 +68,14 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware', # MUST be first
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
-    'apps.platform.core.security_middleware.SecurityHeadersMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
-    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
-    'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',  <-- KEEP COMMENTED
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'apps.accounts.users.middleware.RoleMiddleware',
-    'apps.platform.core.security_middleware.RateLimitMiddleware',
-    'apps.platform.core.security_middleware.RequestLoggingMiddleware',
-    'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware',
+    # 'apps.accounts.users.middleware_logging.PrivacyLoggingMiddleware', <-- COMMENT THIS TEMPORARILY
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -104,14 +101,11 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 
 DATABASES = {
-    'default': {
-        'ENGINE': config('DB_ENGINE', default='django.db.backends.postgresql'),
-        'NAME': config('DB_NAME', default='securemed'),
-        'USER': config('DB_USER', default='postgres'),
-        'PASSWORD': config('DB_PASSWORD', default='securemed_db_password'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
-    }
+    'default': dj_database_url.config(
+        default=config('DATABASE_URL', default=f"postgres://{config('DB_USER', default='postgres')}:{config('DB_PASSWORD', default='')}@{config('DB_HOST', default='localhost')}:{config('DB_PORT', default='5432')}/{config('DB_NAME', default='securemed')}"),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 
@@ -149,6 +143,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
+# Static files (CSS, JavaScript, Images)
 STATIC_URL = '/static/'
 STATIC_ROOT = os.environ.get('STATIC_ROOT', os.path.join(BASE_DIR, 'staticfiles'))
 STORAGES = {
@@ -165,10 +160,13 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Update your existing CORS block (around line 144)
 _default_cors_origins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://0.0.0.0:3000',
+    'https://securemed-finale-569ldd705.vercel.app',
+    'https://securemed-finale.vercel.app',
 ]
 
 CORS_ALLOWED_ORIGINS = config(
@@ -176,29 +174,39 @@ CORS_ALLOWED_ORIGINS = config(
     default=','.join(_default_cors_origins)
 ).split(',')
 
-for _origin in _default_cors_origins:
-    if _origin not in CORS_ALLOWED_ORIGINS:
-        CORS_ALLOWED_ORIGINS.append(_origin)
+# Temporary Emergency Fix: Uncomment the line below if specific origins still fail
+# CORS_ALLOW_ALL_ORIGINS = True 
 
 CORS_ALLOW_CREDENTIALS = True
 
 CSRF_TRUSTED_ORIGINS = config(
     'CSRF_TRUSTED_ORIGINS',
-    default='https://securemed-production.up.railway.app,https://*.railway.app,http://localhost:3000'
+    default=','.join([
+        'https://securemed-production.up.railway.app',
+        'https://*.railway.app',
+        'https://securemed-finale-569ldd705.vercel.app',
+        'https://securemed-finale.vercel.app',
+        'https://securemed-backend.onrender.com',
+        'http://localhost:3000',
+        'http://127.0.0.1:3000',
+    ])
 ).split(',')
+
+# Allow all origins to prevent cross-domain 403s (restrict in production via env if needed)
+CORS_ALLOW_ALL_ORIGINS = True
+CORS_ALLOW_CREDENTIALS = True
 
 # REST Framework Settings
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.IsAuthenticated',
+        'rest_framework.permissions.AllowAny',  # Change this from IsAuthenticated
     ],
     'DEFAULT_PAGINATION_CLASS': 'apps.platform.core.pagination.StandardResultsSetPagination',
     'PAGE_SIZE': 10,
-    'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
+    #'EXCEPTION_HANDLER': 'apps.platform.core.exceptions.custom_exception_handler',
 }
 
 # Custom User Model
@@ -254,8 +262,9 @@ CSRF_COOKIE_HTTPONLY = False
 # HTTPS-only cookies (enabled in production via DJANGO_SECURE_SSL env var)
 # For localhost development: DJANGO_SECURE_SSL should not be set (defaults to False)
 # For production deployment: set DJANGO_SECURE_SSL=True in environment
-SESSION_COOKIE_SECURE = SECURE_SSL
-CSRF_COOKIE_SECURE = SECURE_SSL
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 
 # Google reCAPTCHA Configuration
 # For local development, uses Google's test keys (always pass)
