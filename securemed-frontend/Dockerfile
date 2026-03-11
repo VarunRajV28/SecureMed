@@ -21,11 +21,8 @@ ENV NODE_ENV=production \
     PORT=8080 \
     HOSTNAME=0.0.0.0
 
-# Added shadow utility from main repo to ensure groupadd/useradd works perfectly
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends shadow \
-    && rm -rf /var/lib/apt/lists/* \
-    && groupadd --system --gid 1001 nodejs \
+# groupadd/useradd are pre-installed on oven/bun:1 (Debian-based) — no extra packages needed
+RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid 1001 nextjs
 
 # Copy standalone build files with correct ownership
